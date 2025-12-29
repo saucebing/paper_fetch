@@ -73,6 +73,65 @@ CSV文件包含以下列：
 - `conference`: 会议简称
 - `year`: 年份
 
+## 使用Semantic Scholar API丰富论文信息
+
+在获得基础论文信息后，可以使用Semantic Scholar API获取论文的abstract和引用量：
+
+### 运行丰富脚本
+
+```bash
+python run_enrich.py
+```
+
+或者直接运行：
+
+```bash
+python enrich_with_semantic_scholar.py
+```
+
+### 命令行参数
+
+```bash
+# 处理所有论文
+python run_enrich.py
+
+# 只处理前100篇论文
+python run_enrich.py --max-papers 100
+
+# 从第1000行开始处理（断点续传）
+python run_enrich.py --start-from 1000
+
+# 从第1000行开始，处理50篇
+python run_enrich.py --start-from 1000 --max-papers 50
+
+# 指定输入和输出文件
+python run_enrich.py --input papers.csv --output papers_enriched.csv
+```
+
+### 功能说明
+
+- `--max-papers`: 限制处理的论文数量，处理完最后一篇时会自动保存
+- `--start-from`: 从指定行开始处理（用于断点续传）
+- 程序每50篇自动保存一次进度
+- **处理完最后一篇论文时一定会保存**（无论是否是50的倍数）
+
+### 输出格式
+
+丰富后的CSV文件（`papers_enriched.csv`）包含以下列：
+- `title`: 论文标题
+- `authors`: 作者（多个作者用分号分隔）
+- `conference`: 会议简称
+- `year`: 年份
+- `abstract`: 论文摘要（从Semantic Scholar获取）
+- `citationCount`: 引用量（从Semantic Scholar获取）
+
+### 注意事项
+
+- API频率限制：1请求/秒，程序会自动控制请求频率
+- 处理大量论文需要较长时间（约1秒/篇）
+- 程序每50篇自动保存一次进度，可以安全中断
+- 如果某篇论文在Semantic Scholar中找不到，abstract和citationCount将为空/0
+
 ## 注意事项
 
 - 程序需要网络连接访问DBLP网站

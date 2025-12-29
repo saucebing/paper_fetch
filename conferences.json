@@ -1,0 +1,168 @@
+[
+  {
+    "id": 1,
+    "abbreviation": "PPoPP",
+    "full_name": "ACM SIGPLAN Symposium on Principles & Practice of Parallel Programming",
+    "publisher": "ACM",
+    "direction": "体系结构",
+    "dblp_urls": ["https://dblp.org/db/conf/ppopp/ppopp2025.html"]
+  },
+  {
+    "id": 2,
+    "abbreviation": "FAST",
+    "full_name": "USENIX Conference on File and Storage Technologies",
+    "publisher": "USENIX",
+    "direction": "体系结构",
+    "dblp_urls": ["https://dblp.org/db/conf/fast/fast2025.html"]
+  },
+  {
+    "id": 3,
+    "abbreviation": "DAC",
+    "full_name": "Design Automation Conference",
+    "publisher": "ACM",
+    "direction": "体系结构",
+    "dblp_urls": ["https://dblp.org/db/conf/dac/dac2025.html"]
+  },
+  {
+    "id": 4,
+    "abbreviation": "HPCA",
+    "full_name": "IEEE International Symposium on High Performance Computer Architecture",
+    "publisher": "IEEE",
+    "direction": "体系结构",
+    "dblp_urls": ["https://dblp.org/db/conf/hpca/hpca2025.html"]
+  },
+  {
+    "id": 5,
+    "abbreviation": "SC",
+    "full_name": "International Conference for High Performance Computing, Networking, Storage, and Analysis",
+    "publisher": "IEEE",
+    "direction": "体系结构",
+    "dblp_urls": ["https://dblp.org/db/conf/sc/sc2025.html"]
+  },
+  {
+    "id": 6,
+    "abbreviation": "ASPLOS",
+    "full_name": "International Conference on Architectural Support for Programming Languages and Operating Systems",
+    "publisher": "ACM",
+    "direction": "体系结构",
+    "dblp_urls": [
+      "https://dblp.org/db/conf/asplos/asplos2025-1.html",
+      "https://dblp.org/db/conf/asplos/asplos2025-2.html"
+    ]
+  },
+  {
+    "id": 7,
+    "abbreviation": "ISCA",
+    "full_name": "International Symposium on Computer Architecture",
+    "publisher": "ACM /IEEE",
+    "direction": "体系结构",
+    "dblp_urls": ["https://dblp.org/db/conf/isca/isca2025.html"]
+  },
+  {
+    "id": 8,
+    "abbreviation": "USENIX ATC",
+    "full_name": "USENIX Annual Technical Conference",
+    "publisher": "USENIX",
+    "direction": "体系结构",
+    "dblp_urls": ["https://dblp.org/db/conf/usenix/usenix2025.html"]
+  },
+  {
+    "id": 9,
+    "abbreviation": "EuroSys",
+    "full_name": "European Conference on Computer Systems",
+    "publisher": "ACM",
+    "direction": "体系结构",
+    "dblp_urls": ["https://dblp.org/db/conf/eurosys/eurosys2025.html"]
+  },
+  {
+    "id": 10,
+    "abbreviation": "SIGCOMM",
+    "full_name": "ACM International Conference on Applications, Technologies, Architectures, and Protocols for Computer Communication",
+    "publisher": "ACM",
+    "direction": "计算机网络",
+    "dblp_urls": ["https://dblp.org/db/conf/sigcomm/sigcomm2025.html"]
+  },
+  {
+    "id": 11,
+    "abbreviation": "NSDI",
+    "full_name": "Symposium on Network System Design and Implementation",
+    "publisher": "USENIX",
+    "direction": "计算机网络",
+    "dblp_urls": ["https://dblp.org/db/conf/nsdi/nsdi2025.html"]
+  },
+  {
+    "id": 12,
+    "abbreviation": "SOSP",
+    "full_name": "ACM Symposium on Operating Systems Principles",
+    "publisher": "ACM",
+    "direction": "系统软件",
+    "dblp_urls": ["https://dblp.org/db/conf/sosp/sosp2025.html"]
+  },
+  {
+    "id": 13,
+    "abbreviation": "OSDI",
+    "full_name": "USENIX Symposium on Operating Systems Design and Implementation",
+    "publisher": "USENIX",
+    "direction": "系统软件",
+    "dblp_urls": ["https://dblp.org/db/conf/osdi/osdi2025.html"]
+  },
+  {
+    "id": 14,
+    "abbreviation": "AAAI",
+    "full_name": "AAAI Conference on Artificial Intelligence",
+    "publisher": "AAAI",
+    "direction": "人工智能",
+    "dblp_urls": ["https://dblp.org/db/conf/aaai/aaai2025.html"]
+  },
+  {
+    "id": 15,
+    "abbreviation": "NeurIPS",
+    "full_name": "Conference on Neural Information Processing Systems",
+    "publisher": "MIT Press",
+    "direction": "人工智能",
+    "dblp_urls": ["https://dblp.org/db/conf/nips/nips2025.html"]
+  },
+  {
+    "id": 16,
+    "abbreviation": "ACL",
+    "full_name": "Annual Meeting of the Association for Computational Linguistics",
+    "publisher": "ACL",
+    "direction": "人工智能",
+    "dblp_urls": ["https://dblp.org/db/conf/acl/acl2025-1.html"]
+  },
+  {
+    "id": 17,
+    "abbreviation": "CVPR",
+    "full_name": "IEEE/CVF Computer Vision and Pattern Recognition Conference",
+    "publisher": "IEEE",
+    "direction": "人工智能",
+    "dblp_urls": ["https://dblp.org/db/conf/cvpr/cvpr2025.html"]
+  },
+  {
+    "id": 18,
+    "abbreviation": "ICML",
+    "full_name": "International Conference on Machine Learning",
+    "publisher": "ACM",
+    "direction": "人工智能",
+    "dblp_urls": ["https://dblp.org/db/conf/icml/icml2025.html"]
+  },
+  {
+    "id": 19,
+    "abbreviation": "IJCAI",
+    "full_name": "International Joint Conference on Artificial Intelligence",
+    "publisher": "Morgan Kaufmann",
+    "direction": "人工智能",
+    "dblp_urls": ["https://dblp.org/db/conf/ijcai/ijcai2025.html"]
+  },
+  {
+    "id": 20,
+    "abbreviation": "MLSys",
+    "full_name": "The Conference on Machine Learning and Systems",
+    "publisher": "-",
+    "direction": "领域交叉",
+    "dblp_urls": ["https://dblp.org/search?q=mlsys%202024"],
+    "special_case": true,
+    "only_2024": true
+  }
+]
+

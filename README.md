@@ -106,6 +106,12 @@ python run_enrich.py --start-from 1000 --max-papers 50
 
 # 指定输入和输出文件
 python run_enrich.py --input papers.csv --output papers_enriched.csv
+
+# 不获取作者单位信息（加快处理速度）
+python run_enrich.py --no-affiliations
+
+# 只获取前3个作者的单位信息（后面的作者不获取单位，可以加快处理速度）
+python run_enrich.py --max-authors 3
 ```
 
 ### 功能说明
@@ -124,6 +130,26 @@ python run_enrich.py --input papers.csv --output papers_enriched.csv
 - `year`: 年份
 - `abstract`: 论文摘要（从Semantic Scholar获取）
 - `citationCount`: 引用量（从Semantic Scholar获取）
+- `affiliations`: 作者单位信息（格式：作者1: 单位1; 单位2 | 作者2: 单位1）
+
+### 作者单位信息
+
+默认情况下，程序会尝试获取每篇论文所有作者的单位信息。格式说明：
+- 每个作者的单位用 `作者名: 单位1; 单位2` 格式
+- 不同作者之间用 ` | ` 分隔
+- 如果某个作者没有单位信息，显示为 `作者名: (无)`
+- 如果使用 `--max-authors n` 参数，后面的作者只显示名字，不显示单位信息
+
+**示例**：
+- 获取所有作者单位：`作者1: 单位1 | 作者2: 单位2 | 作者3: (无)`
+- 只获取前2个作者单位：`作者1: 单位1 | 作者2: 单位2 | 作者3 | 作者4`
+
+**注意**：
+- 获取单位信息会增加API调用次数（每篇论文需要为每个作者额外调用一次API）
+- 如果一篇论文有5个作者，处理时间会增加约5秒
+- 如果不需要单位信息，可以使用 `--no-affiliations` 参数加快处理速度
+- 如果只想获取前几个作者的单位，可以使用 `--max-authors n` 参数，这样可以减少API调用次数
+- 例如：`--max-authors 3` 只会获取前3个作者的单位，后面的作者只显示名字
 
 ### 注意事项
 

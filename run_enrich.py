@@ -31,10 +31,32 @@ def main():
                        help='输入CSV文件路径（默认：papers.csv）')
     parser.add_argument('--output', type=str, default='papers_enriched.csv',
                        help='输出CSV文件路径（默认：papers_enriched.csv）')
+    parser.add_argument('--no-affiliations', action='store_true',
+                       help='不获取作者单位信息（可以加快处理速度）')
+    parser.add_argument('--max-authors', type=int, default=None,
+                       help='最多获取前n个作者的单位信息（后面的作者不获取单位，可以加快处理速度）')
     
     args = parser.parse_args()
     
-    enricher = SemanticScholarEnricher(API_KEY)
+    # 确定是否获取单位信息
+    # 如果使用了--no-affiliations，则不获取单位
+    # 否则，如果指定了--max-authors，则获取前n个作者的单位
+    # 如果都没有指定，默认获取所有作者的单位
+    if args.no_affiliations:
+        get_affiliations = False
+        max_authors = None
+    elif args.max_authors is not None and args.max_authors > 0:
+        get_affiliations = True
+        max_authors = args.max_authors
+    else:
+        get_affiliations = True
+        max_authors = None
+    
+    enricher = SemanticScholarEnricher(
+        API_KEY, 
+        get_affiliations=get_affiliations,
+        max_authors_for_affiliations=max_authors
+    )
     
     try:
         enricher.enrich_csv(

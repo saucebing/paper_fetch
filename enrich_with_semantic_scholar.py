@@ -12,12 +12,14 @@ import urllib.parse
 
 
 class SemanticScholarEnricher:
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, get_affiliations: bool = True, max_authors_for_affiliations: int = None):
         """
         初始化Semantic Scholar API客户端
         
         Args:
             api_key: Semantic Scholar API密钥
+            get_affiliations: 是否获取作者单位信息（会增加API调用次数和处理时间）
+            max_authors_for_affiliations: 最多获取前n个作者的单位（None表示获取所有作者的单位）
         """
         self.api_key = api_key
         self.base_url = "https://api.semanticscholar.org/graph/v1"
@@ -26,6 +28,8 @@ class SemanticScholarEnricher:
             'Accept': 'application/json'
         }
         self.last_request_time = 0  # 用于控制请求频率
+        self.get_affiliations = get_affiliations  # 是否获取单位信息
+        self.max_authors_for_affiliations = max_authors_for_affiliations  # 最多获取前n个作者的单位
         
     def _wait_for_rate_limit(self):
         """等待以满足频率限制（1请求/秒）"""
@@ -113,7 +117,7 @@ class SemanticScholarEnricher:
                     if paper_id:
                         # 确保满足频率限制后再调用
                         self._wait_for_rate_limit()
-                        return self.get_paper_details(paper_id)
+                        return self.get_paper_details(paper_id, get_affiliations=self.get_affiliations)
                 
                 # 如果没有找到匹配的，返回第一个结果
                 if papers:
@@ -121,7 +125,7 @@ class SemanticScholarEnricher:
                     if paper_id:
                         # 确保满足频率限制后再调用
                         self._wait_for_rate_limit()
-                        return self.get_paper_details(paper_id)
+                        return self.get_paper_details(paper_id, get_affiliations=self.get_affiliations)
             
             elif response.status_code == 429:
                 print(f"  遇到速率限制，等待更长时间...")
@@ -140,15 +144,49 @@ class SemanticScholarEnricher:
         
         return None
     
-    def get_paper_details(self, paper_id: str) -> Optional[Dict[str, Any]]:
+    def get_author_affiliations(self, author_id: str) -> list:
+        """
+        获取作者的单位信息
+        
+        Args:
+            author_id: Semantic Scholar作者ID
+            
+        Returns:
+            单位列表
+        """
+        self._wait_for_rate_limit()
+        
+        try:
+            url = f"{self.base_url}/author/{author_id}"
+            params = {
+                'fields': 'affiliations'
+            }
+            
+            response = requests.get(url, headers=self.headers, params=params, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data.get('affiliations', [])
+            elif response.status_code == 429:
+                print(f"  遇到速率限制，等待更长时间...")
+                time.sleep(5)
+                return []
+            else:
+                return []
+                
+        except Exception as e:
+            return []
+    
+    def get_paper_details(self, paper_id: str, get_affiliations: bool = False) -> Optional[Dict[str, Any]]:
         """
         根据论文ID获取详细信息（包括abstract和citationCount）
         
         Args:
             paper_id: Semantic Scholar论文ID
+            get_affiliations: 是否获取作者单位信息（会增加API调用次数）
             
         Returns:
-            论文详细信息字典
+            论文详细信息字典，如果get_affiliations=True，会包含authorsWithAffiliations字段
         """
         self._wait_for_rate_limit()
         
@@ -161,7 +199,49 @@ class SemanticScholarEnricher:
             response = requests.get(url, headers=self.headers, params=params, timeout=30)
             
             if response.status_code == 200:
-                return response.json()
+                paper_data = response.json()
+                
+                # 如果需要获取单位信息
+                if get_affiliations and 'authors' in paper_data:
+                    authors_with_affiliations = []
+                    authors_list = paper_data.get('authors', [])
+                    
+                    # 确定要获取单位的作者数量
+                    if self.max_authors_for_affiliations is not None:
+                        authors_to_process = min(self.max_authors_for_affiliations, len(authors_list))
+                    else:
+                        authors_to_process = len(authors_list)
+                    
+                    for idx, author in enumerate(authors_list):
+                        author_id = author.get('authorId')
+                        author_name = author.get('name', '')
+                        
+                        # 只获取前n个作者的单位
+                        if idx < authors_to_process:
+                            if author_id:
+                                affiliations = self.get_author_affiliations(author_id)
+                                authors_with_affiliations.append({
+                                    'name': author_name,
+                                    'affiliations': affiliations,
+                                    'has_affiliations': True
+                                })
+                            else:
+                                authors_with_affiliations.append({
+                                    'name': author_name,
+                                    'affiliations': [],
+                                    'has_affiliations': True
+                                })
+                        else:
+                            # 后面的作者不获取单位，只记录名字
+                            authors_with_affiliations.append({
+                                'name': author_name,
+                                'affiliations': [],
+                                'has_affiliations': False
+                            })
+                    
+                    paper_data['authorsWithAffiliations'] = authors_with_affiliations
+                
+                return paper_data
             elif response.status_code == 429:
                 print(f"  遇到速率限制，等待更长时间...")
                 time.sleep(5)
@@ -187,11 +267,12 @@ class SemanticScholarEnricher:
             year: 年份（可选）
             
         Returns:
-            包含abstract和citationCount的字典
+            包含abstract、citationCount和affiliations的字典
         """
         result = {
             'abstract': '',
-            'citationCount': 0
+            'citationCount': 0,
+            'affiliations': ''  # 作者单位信息（格式：作者1: 单位1; 单位2 | 作者2: 单位1）
         }
         
         # 搜索论文
@@ -200,12 +281,37 @@ class SemanticScholarEnricher:
         if paper_info:
             result['abstract'] = paper_info.get('abstract', '')
             result['citationCount'] = paper_info.get('citationCount', 0)
+            
+            # 如果获取了作者单位信息
+            if 'authorsWithAffiliations' in paper_info:
+                affiliations_list = []
+                for author_info in paper_info['authorsWithAffiliations']:
+                    author_name = author_info.get('name', '')
+                    affiliations = author_info.get('affiliations', [])
+                    has_affiliations = author_info.get('has_affiliations', True)
+                    
+                    if has_affiliations:
+                        # 如果尝试获取了单位信息
+                        if affiliations:
+                            # 格式：作者名: 单位1; 单位2
+                            aff_str = f"{author_name}: {'; '.join(affiliations)}"
+                        else:
+                            # 如果没有单位，显示(无)
+                            aff_str = f"{author_name}: (无)"
+                    else:
+                        # 如果没有获取单位信息（后面的作者），只显示名字
+                        aff_str = author_name
+                    
+                    affiliations_list.append(aff_str)
+                
+                # 用 | 分隔不同作者
+                result['affiliations'] = ' | '.join(affiliations_list)
         
         return result
     
     def _save_progress(self, papers: list, output_file: str):
         """保存当前进度"""
-        fieldnames = ['title', 'authors', 'conference', 'year', 'abstract', 'citationCount']
+        fieldnames = ['title', 'authors', 'conference', 'year', 'abstract', 'citationCount', 'affiliations']
         with open(output_file, 'w', newline='', encoding='utf-8-sig') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
@@ -216,7 +322,8 @@ class SemanticScholarEnricher:
                     'conference': paper.get('conference', ''),
                     'year': paper.get('year', ''),
                     'abstract': paper.get('abstract', ''),
-                    'citationCount': paper.get('citationCount', 0)
+                    'citationCount': paper.get('citationCount', 0),
+                    'affiliations': paper.get('affiliations', '')
                 })
     
     def enrich_csv(self, input_file: str, output_file: str, start_from: int = 0, max_papers: int = None):
@@ -258,12 +365,14 @@ class SemanticScholarEnricher:
                 print(f"已处理 {start_from} 篇，剩余 {papers_to_process} 篇")
         print()
         
-        # 初始化abstract和citationCount字段（如果不存在）
+        # 初始化abstract、citationCount和affiliations字段（如果不存在）
         for paper in papers:
             if 'abstract' not in paper:
                 paper['abstract'] = ''
             if 'citationCount' not in paper:
                 paper['citationCount'] = 0
+            if 'affiliations' not in paper:
+                paper['affiliations'] = ''
         
         # 处理每篇论文
         success_count = sum(1 for p in papers[:start_from] if p.get('abstract') or p.get('citationCount', 0) > 0)
@@ -277,8 +386,10 @@ class SemanticScholarEnricher:
                 year_str = paper.get('year', '').strip()
                 conference = paper.get('conference', '').strip()
                 
-                # 如果已经有数据，跳过
-                if paper.get('abstract') or paper.get('citationCount', 0) > 0:
+                # 如果已经有数据，跳过（但如果没有单位信息且需要获取，则继续处理）
+                has_data = paper.get('abstract') or paper.get('citationCount', 0) > 0
+                has_affiliations = paper.get('affiliations', '')
+                if has_data and (not self.get_affiliations or has_affiliations):
                     print(f"[{idx+1}/{total}] 跳过（已有数据）: {title[:60]}...")
                     continue
                 
@@ -293,23 +404,27 @@ class SemanticScholarEnricher:
                 print(f"[{idx+1}/{total}] 处理: {title[:60]}...")
                 print(f"  会议: {conference}, 年份: {year}")
                 
-                # 获取abstract和引用量
+                # 获取abstract、引用量和单位信息
                 try:
                     result = self.enrich_paper(title, authors, year)
                     
                     if result['abstract'] or result['citationCount'] > 0:
                         paper['abstract'] = result['abstract']
                         paper['citationCount'] = result['citationCount']
+                        paper['affiliations'] = result.get('affiliations', '')
                         success_count += 1
-                        print(f"  ✓ 成功获取 - 引用量: {result['citationCount']}, Abstract长度: {len(result['abstract'])}")
+                        aff_info = f", 单位信息: {len(result.get('affiliations', ''))} 字符" if result.get('affiliations') else ""
+                        print(f"  ✓ 成功获取 - 引用量: {result['citationCount']}, Abstract长度: {len(result['abstract'])}{aff_info}")
                     else:
                         paper['abstract'] = ''
                         paper['citationCount'] = 0
+                        paper['affiliations'] = ''
                         failed_count += 1
                         print(f"  ✗ 未找到匹配的论文")
                 except Exception as e:
                     paper['abstract'] = ''
                     paper['citationCount'] = 0
+                    paper['affiliations'] = ''
                     failed_count += 1
                     print(f"  ✗ 处理出错: {e}")
                 
@@ -351,7 +466,8 @@ def main():
     """主函数"""
     API_KEY = "F2UHMkH5fb4EuF0DdWjAo4CU9PKE4yns5lbYJv21"
     
-    enricher = SemanticScholarEnricher(API_KEY)
+    # 默认获取单位信息，可以通过参数控制
+    enricher = SemanticScholarEnricher(API_KEY, get_affiliations=True, max_authors_for_affiliations=None)
     
     try:
         enricher.enrich_csv("papers.csv", "papers_enriched.csv")

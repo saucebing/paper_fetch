@@ -112,14 +112,32 @@ python run_enrich.py --no-affiliations
 
 # 只获取前3个作者的单位信息（后面的作者不获取单位，可以加快处理速度）
 python run_enrich.py --max-authors 3
+
+# 跳过已有abstract的行，只处理空abstract的行（用于增量更新）
+python run_enrich.py --skip-existing-abstract
 ```
 
 ### 功能说明
 
 - `--max-papers`: 限制处理的论文数量，处理完最后一篇时会自动保存
 - `--start-from`: 从指定行开始处理（用于断点续传）
+- `--skip-existing-abstract`: 跳过已有abstract的行，直接复制到输出（用于增量更新）
+  - 如果某行的abstract字段不为空，则跳过处理，直接复制该行到输出文件
+  - 如果abstract为空，则正常调用API获取abstract等信息
+  - 适用于在已有enriched文件基础上增量更新
 - 程序每50篇自动保存一次进度
 - **处理完最后一篇论文时一定会保存**（无论是否是50的倍数）
+
+### 增量更新示例
+
+如果已经有一个 `papers_enriched.csv` 文件，其中部分论文已有abstract，想要补充剩余论文的abstract：
+
+```bash
+# 使用已有的enriched文件作为输入，跳过已有abstract的行
+python run_enrich.py --input papers_enriched.csv --output papers_enriched.csv --skip-existing-abstract
+```
+
+这样可以避免重复处理已有数据的论文，节省时间和API调用次数。
 
 ### 输出格式
 

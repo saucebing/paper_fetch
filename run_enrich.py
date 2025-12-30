@@ -35,6 +35,8 @@ def main():
                        help='不获取作者单位信息（可以加快处理速度）')
     parser.add_argument('--max-authors', type=int, default=None,
                        help='最多获取前n个作者的单位信息（后面的作者不获取单位，可以加快处理速度）')
+    parser.add_argument('--skip-existing-abstract', action='store_true',
+                       help='跳过已有abstract的行，直接复制到输出（用于增量更新）')
     
     args = parser.parse_args()
     
@@ -63,7 +65,8 @@ def main():
             args.input, 
             args.output, 
             start_from=args.start_from,
-            max_papers=args.max_papers
+            max_papers=args.max_papers,
+            skip_existing_abstract=args.skip_existing_abstract
         )
         print("\n✅ 所有任务完成！")
     except KeyboardInterrupt:

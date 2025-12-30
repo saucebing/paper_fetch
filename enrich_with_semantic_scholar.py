@@ -279,8 +279,13 @@ class SemanticScholarEnricher:
         paper_info = self.search_paper(title, authors, year)
         
         if paper_info:
-            result['abstract'] = paper_info.get('abstract', '')
-            result['citationCount'] = paper_info.get('citationCount', 0)
+            # 确保abstract始终是字符串，不会是None
+            abstract = paper_info.get('abstract', '')
+            result['abstract'] = abstract if abstract is not None else ''
+            
+            # 确保citationCount始终是整数
+            citation_count = paper_info.get('citationCount', 0)
+            result['citationCount'] = int(citation_count) if citation_count is not None else 0
             
             # 如果获取了作者单位信息
             if 'authorsWithAffiliations' in paper_info:
@@ -316,17 +321,27 @@ class SemanticScholarEnricher:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             for paper in papers:
+                # 确保citationCount是整数类型
+                citation_count = paper.get('citationCount', 0)
+                try:
+                    if isinstance(citation_count, str):
+                        citation_count = int(citation_count.strip()) if citation_count.strip() else 0
+                    else:
+                        citation_count = int(citation_count) if citation_count else 0
+                except (ValueError, TypeError):
+                    citation_count = 0
+                
                 writer.writerow({
                     'title': paper.get('title', ''),
                     'authors': paper.get('authors', ''),
                     'conference': paper.get('conference', ''),
                     'year': paper.get('year', ''),
                     'abstract': paper.get('abstract', ''),
-                    'citationCount': paper.get('citationCount', 0),
+                    'citationCount': citation_count,
                     'affiliations': paper.get('affiliations', '')
                 })
     
-    def enrich_csv(self, input_file: str, output_file: str, start_from: int = 0, max_papers: int = None):
+    def enrich_csv(self, input_file: str, output_file: str, start_from: int = 0, max_papers: int = None, skip_existing_abstract: bool = False):
         """
         为CSV文件中的所有论文添加abstract和引用量
         
@@ -335,6 +350,7 @@ class SemanticScholarEnricher:
             output_file: 输出CSV文件路径
             start_from: 从第几行开始处理（用于断点续传）
             max_papers: 最多处理的论文数量（None表示处理所有）
+            skip_existing_abstract: 如果为True，跳过已有abstract的行，直接复制到输出
         """
         print("=" * 60)
         print("开始使用Semantic Scholar API丰富论文信息")
@@ -342,6 +358,8 @@ class SemanticScholarEnricher:
             print(f"从第 {start_from + 1} 行开始处理（断点续传）")
         if max_papers:
             print(f"限制处理前 {max_papers} 篇论文")
+        if skip_existing_abstract:
+            print("跳过已有abstract的行（直接复制）")
         print("=" * 60)
         
         # 读取输入CSV（处理可能的BOM）
@@ -365,18 +383,47 @@ class SemanticScholarEnricher:
                 print(f"已处理 {start_from} 篇，剩余 {papers_to_process} 篇")
         print()
         
-        # 初始化abstract、citationCount和affiliations字段（如果不存在）
+        # 初始化abstract、citationCount和affiliations字段（如果不存在），并确保类型正确
         for paper in papers:
             if 'abstract' not in paper:
                 paper['abstract'] = ''
             if 'citationCount' not in paper:
                 paper['citationCount'] = 0
+            else:
+                # 确保citationCount是整数类型（CSV读取的是字符串）
+                try:
+                    citation_count = paper.get('citationCount', 0)
+                    if isinstance(citation_count, str):
+                        # 如果是字符串，尝试转换为整数
+                        citation_count = citation_count.strip()
+                        paper['citationCount'] = int(citation_count) if citation_count else 0
+                    elif citation_count is None or citation_count == '':
+                        paper['citationCount'] = 0
+                    else:
+                        paper['citationCount'] = int(citation_count)
+                except (ValueError, TypeError):
+                    # 如果转换失败，设为0
+                    paper['citationCount'] = 0
             if 'affiliations' not in paper:
                 paper['affiliations'] = ''
         
         # 处理每篇论文
-        success_count = sum(1 for p in papers[:start_from] if p.get('abstract') or p.get('citationCount', 0) > 0)
+        # 确保citationCount是整数类型后再比较
+        def has_data(paper):
+            abstract = paper.get('abstract', '').strip()
+            citation_count = paper.get('citationCount', 0)
+            try:
+                if isinstance(citation_count, str):
+                    citation_count = int(citation_count.strip()) if citation_count.strip() else 0
+                else:
+                    citation_count = int(citation_count) if citation_count else 0
+            except (ValueError, TypeError):
+                citation_count = 0
+            return bool(abstract) or citation_count > 0
+        
+        success_count = sum(1 for p in papers[:start_from] if has_data(p))
         failed_count = start_from - success_count
+        skipped_count = 0  # 统计跳过的数量
         
         try:
             for idx in range(start_from, end_idx):
@@ -386,11 +433,31 @@ class SemanticScholarEnricher:
                 year_str = paper.get('year', '').strip()
                 conference = paper.get('conference', '').strip()
                 
+                # 如果启用了skip_existing_abstract选项，检查abstract字段
+                if skip_existing_abstract:
+                    existing_abstract = paper.get('abstract', '').strip()
+                    if existing_abstract:
+                        # abstract不为空，跳过处理，直接复制
+                        print(f"[{idx+1}/{total}] 跳过（已有abstract）: {title[:60]}...")
+                        skipped_count += 1
+                        continue
+                
                 # 如果已经有数据，跳过（但如果没有单位信息且需要获取，则继续处理）
-                has_data = paper.get('abstract') or paper.get('citationCount', 0) > 0
+                # 确保citationCount是整数类型后再比较
+                citation_count = paper.get('citationCount', 0)
+                try:
+                    if isinstance(citation_count, str):
+                        citation_count = int(citation_count.strip()) if citation_count.strip() else 0
+                    else:
+                        citation_count = int(citation_count) if citation_count else 0
+                except (ValueError, TypeError):
+                    citation_count = 0
+                
+                has_data = bool(paper.get('abstract', '').strip()) or citation_count > 0
                 has_affiliations = paper.get('affiliations', '')
                 if has_data and (not self.get_affiliations or has_affiliations):
                     print(f"[{idx+1}/{total}] 跳过（已有数据）: {title[:60]}...")
+                    skipped_count += 1
                     continue
                 
                 # 解析年份
@@ -408,13 +475,20 @@ class SemanticScholarEnricher:
                 try:
                     result = self.enrich_paper(title, authors, year)
                     
-                    if result['abstract'] or result['citationCount'] > 0:
-                        paper['abstract'] = result['abstract']
-                        paper['citationCount'] = result['citationCount']
-                        paper['affiliations'] = result.get('affiliations', '')
+                    # 确保abstract是字符串，不会是None
+                    abstract = result.get('abstract', '') or ''
+                    citation_count = result.get('citationCount', 0) or 0
+                    
+                    if abstract or citation_count > 0:
+                        paper['abstract'] = abstract
+                        paper['citationCount'] = citation_count
+                        paper['affiliations'] = result.get('affiliations', '') or ''
                         success_count += 1
-                        aff_info = f", 单位信息: {len(result.get('affiliations', ''))} 字符" if result.get('affiliations') else ""
-                        print(f"  ✓ 成功获取 - 引用量: {result['citationCount']}, Abstract长度: {len(result['abstract'])}{aff_info}")
+                        
+                        # 确保affiliations是字符串，避免NoneType错误
+                        affiliations = result.get('affiliations', '') or ''
+                        aff_info = f", 单位信息: {len(affiliations)} 字符" if affiliations else ""
+                        print(f"  ✓ 成功获取 - 引用量: {citation_count}, Abstract长度: {len(abstract)}{aff_info}")
                     else:
                         paper['abstract'] = ''
                         paper['citationCount'] = 0
@@ -458,6 +532,8 @@ class SemanticScholarEnricher:
         print(f"处理完成！")
         print(f"成功: {success_count}/{papers_to_process} ({success_count*100//papers_to_process if papers_to_process > 0 else 0}%)")
         print(f"失败: {failed_count}/{papers_to_process}")
+        if skip_existing_abstract and skipped_count > 0:
+            print(f"跳过: {skipped_count}/{papers_to_process} (已有abstract)")
         print("=" * 60)
         print(f"\n结果已保存到: {output_file}")
 
